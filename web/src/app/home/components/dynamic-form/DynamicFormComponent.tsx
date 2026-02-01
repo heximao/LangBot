@@ -1,4 +1,7 @@
-import { IDynamicFormItemSchema } from '@/app/infra/entities/form/dynamic';
+import {
+  IDynamicFormItemSchema,
+  DynamicFormItemType,
+} from '@/app/infra/entities/form/dynamic';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -190,6 +193,19 @@ function WebhookUrlField({
   );
 }
 
+/**
+ * Normalize plugin manifest type names to frontend-compatible types
+ */
+function normalizeItemType(type: string): string {
+  const typeMap: Record<string, string> = {
+    'select-llm-model': DynamicFormItemType.LLM_MODEL_SELECTOR,
+    'select-knowledge-bases': DynamicFormItemType.KNOWLEDGE_BASE_MULTI_SELECTOR,
+    number: DynamicFormItemType.FLOAT,
+    json: DynamicFormItemType.TEXT,
+  };
+  return typeMap[type] || type;
+}
+
 export default function DynamicFormComponent({
   itemConfigList,
   onSubmit,
@@ -270,8 +286,11 @@ export default function DynamicFormComponent({
   const formSchema = z.object(
     editableItems.reduce(
       (acc, item) => {
+        // Normalize type to handle plugin manifest type names
+        const normalizedType = normalizeItemType(item.type);
+
         let fieldSchema;
-        switch (item.type) {
+        switch (normalizedType) {
           case 'integer':
             fieldSchema = z.number();
             break;
@@ -324,6 +343,9 @@ export default function DynamicFormComponent({
                 role: z.string(),
               }),
             );
+            break;
+          case 'text':
+            fieldSchema = z.string();
             break;
           default:
             fieldSchema = z.string();
@@ -478,6 +500,12 @@ export default function DynamicFormComponent({
         />
 
         {itemConfigList.map((config) => {
+          // Create a normalized config with type converted to frontend format
+          const normalizedConfig = {
+            ...config,
+            type: normalizeItemType(config.type),
+          };
+
           if (config.show_if) {
             const dependValue = resolveShowIfValue(
               config.show_if.field,
@@ -511,7 +539,7 @@ export default function DynamicFormComponent({
           const isFieldDisabled = !!isEditing;
 
           // Webhook URL fields are display-only; render outside of form binding
-          if (config.type === 'webhook-url') {
+          if (normalizedConfig.type === 'webhook-url') {
             const webhookUrl = (systemContext?.webhook_url as string) || '';
             const extraWebhookUrl =
               (systemContext?.extra_webhook_url as string) || '';
@@ -533,7 +561,7 @@ export default function DynamicFormComponent({
             );
           }
 
-          if (config.type === 'embed-code') {
+          if (normalizedConfig.type === 'embed-code') {
             const botUuid = (systemContext?.bot_uuid as string) || '';
             if (!botUuid) return null;
 
@@ -624,7 +652,7 @@ export default function DynamicFormComponent({
           }
 
           // Boolean fields use a special inline layout
-          if (config.type === 'boolean') {
+          if (normalizedConfig.type === 'boolean') {
             return (
               <FormField
                 key={config.id}
@@ -650,7 +678,7 @@ export default function DynamicFormComponent({
                       </div>
                       <FormControl>
                         <DynamicFormItemComponent
-                          config={config}
+                          config={normalizedConfig}
                           field={field}
                           onFileUploaded={onFileUploaded}
                         />
@@ -681,7 +709,7 @@ export default function DynamicFormComponent({
                       }
                     >
                       <DynamicFormItemComponent
-                        config={config}
+                        config={normalizedConfig}
                         field={field}
                         onFileUploaded={onFileUploaded}
                       />
