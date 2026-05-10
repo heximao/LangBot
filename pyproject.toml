@@ -105,6 +105,9 @@ classifiers = [
     "Topic :: Communications :: Chat",
 ]
 
+[tool.uv.sources]
+langbot-plugin = { path = "../langbot-plugin-sdk", editable = true }
+
 [project.urls]
 Homepage = "https://langbot.app"
 Documentation = "https://docs.langbot.app"
@@ -223,4 +226,3 @@ skip-magic-trailing-comma = false
 
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
-

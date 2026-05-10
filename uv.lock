@@ -1973,7 +1973,7 @@ requires-dist = [
     { name = "ebooklib", specifier = ">=0.18" },
     { name = "gewechat-client", specifier = ">=0.1.5" },
     { name = "html2text", specifier = ">=2024.2.26" },
-    { name = "langbot-plugin", specifier = "==0.3.11" },
+    { name = "langbot-plugin", editable = "../langbot-plugin-sdk" },
     { name = "langchain", specifier = ">=0.2.0" },
     { name = "langchain-core", specifier = ">=1.2.28" },
     { name = "langchain-text-splitters", specifier = ">=1.1.2" },
@@ -2036,8 +2036,8 @@ dev = [
 
 [[package]]
 name = "langbot-plugin"
-version = "0.3.11"
-source = { registry = "https://pypi.org/simple" }
+version = "0.3.10"
+source = { editable = "../langbot-plugin-sdk" }
 dependencies = [
     { name = "aiofiles" },
     { name = "dotenv" },
@@ -2054,9 +2054,29 @@ dependencies = [
     { name = "watchdog" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/91/83/93b86bcdbfe51d820fa59232aaa73cc802d6ce614f67d8f8b33957419538/langbot_plugin-0.3.11.tar.gz", hash = "sha256:8d10c98c771b468b2d35cc007778439c39922a88265fcc16a5881234bc7c1b19", size = 190315, upload-time = "2026-05-12T15:45:24.262Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8f/22/de7977a6a5cbf557b80043eb3ed39e5feff24033a5d6db4ab88d48ccb6ea/langbot_plugin-0.3.11-py3-none-any.whl", hash = "sha256:c1d2e84eda1584902d99efa316b850c08c1c04fcc199306ff4af1dca1431304a", size = 165574, upload-time = "2026-05-12T15:45:22.908Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "aiofiles", specifier = ">=24.1.0" },
+    { name = "dotenv", specifier = ">=0.9.9" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "pip", specifier = ">=25.2" },
+    { name = "pydantic", specifier = ">=2.11.5" },
+    { name = "pydantic-settings", specifier = ">=2.10.1" },
+    { name = "pytest", specifier = ">=8.4.0" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "textual", specifier = ">=3.2.0" },
+    { name = "types-aiofiles", specifier = ">=24.1.0.20250516" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20250516" },
+    { name = "watchdog", specifier = ">=6.0.0" },
+    { name = "websockets", specifier = ">=15.0.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.16.0" },
+    { name = "ruff", specifier = ">=0.11.12" },
 ]
 
 [[package]]

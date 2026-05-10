@@ -9,6 +9,12 @@ import langbot_plugin.api.entities.builtin.platform.message as platform_message
 import langbot_plugin.api.entities.builtin.pipeline.query as pipeline_query
 import langbot_plugin.api.entities.builtin.platform.events as platform_events
 
+from ...agent.runner.config_migration import ConfigMigration
+
+
+# Official local-agent runner ID
+LOCAL_AGENT_RUNNER_ID = 'plugin:langbot/local-agent/default'
+
 
 @stage.stage_class('PreProcessor')
 class PreProcessor(stage.PipelineStage):
@@ -31,16 +37,27 @@ class PreProcessor(stage.PipelineStage):
         stage_inst_name: str,
     ) -> entities.StageProcessResult:
         """Process"""
-        selected_runner = query.pipeline_config['ai']['runner']['runner']
+        # Resolve runner ID using ConfigMigration (supports both new and old formats)
+        runner_id = ConfigMigration.resolve_runner_id(query.pipeline_config)
+
+        # Get runner config (from new ai.runner_config or old ai.<runner-name>)
+        runner_config = ConfigMigration.resolve_runner_config(query.pipeline_config, runner_id) if runner_id else {}
 
         session = await self.ap.sess_mgr.get_session(query)
 
+        # Determine if this is a local-agent runner (built-in LLM capabilities)
+        # Check by runner_id OR by legacy runner field for backward compatibility
+        is_local_agent = runner_id == LOCAL_AGENT_RUNNER_ID or (
+            runner_id is None and
+            query.pipeline_config.get('ai', {}).get('runner', {}).get('runner') == 'local-agent'
+        )
+
         # When not local-agent, llm_model is None
         llm_model = None
-        if selected_runner == 'local-agent':
+        if is_local_agent:
             # Read model config — new format is { primary: str, fallbacks: [str] },
             # but handle legacy plain string for backward compatibility
-            model_config = query.pipeline_config['ai']['local-agent'].get('model', {})
+            model_config = runner_config.get('model', {})
             if isinstance(model_config, str):
                 # Legacy format: plain UUID string
                 primary_uuid = model_config
@@ -67,10 +84,17 @@ class PreProcessor(stage.PipelineStage):
                 if valid_fallbacks:
                     query.variables['_fallback_model_uuids'] = valid_fallbacks
 
+        # Get prompt config - for local-agent, use runner_config; for others, use default prompt
+        prompt_config = runner_config.get('prompt', [
+            {'role': 'system', 'content': 'You are a helpful assistant.'}
+        ]) if is_local_agent else [
+            {'role': 'system', 'content': 'You are a helpful assistant.'}
+        ]
+
         conversation = await self.ap.sess_mgr.get_conversation(
             query,
             session,
-            query.pipeline_config['ai']['local-agent']['prompt'],
+            prompt_config,
             query.pipeline_uuid,
             query.bot_uuid,
         )
@@ -79,7 +103,7 @@ class PreProcessor(stage.PipelineStage):
         # been idle for longer than the configured conversation expire time.
         # The idle window is measured from the last preprocess/update time, not
         # from the conversation creation time.
-        conversation_expire_time = query.pipeline_config.get('ai', {}).get('runner', {}).get('expire-time', None)
+        conversation_expire_time = ConfigMigration.get_expire_time(query.pipeline_config)
         now = datetime.datetime.now()
         if conversation_expire_time is not None and conversation_expire_time > 0:
             last_update_time = getattr(conversation, 'update_time', None) or getattr(conversation, 'create_time', None)
@@ -101,7 +125,7 @@ class PreProcessor(stage.PipelineStage):
         query.prompt = conversation.prompt.copy()
         query.messages = conversation.messages.copy()
 
-        if selected_runner == 'local-agent':
+        if is_local_agent:
             query.use_funcs = []
             if llm_model:
                 query.use_llm_model_uuid = llm_model.model_entity.uuid
@@ -149,7 +173,7 @@ class PreProcessor(stage.PipelineStage):
         # Check if this model supports vision, if not, remove all images
         # TODO this checking should be performed in runner, and in this stage, the image should be reserved
         if (
-            selected_runner == 'local-agent'
+            is_local_agent
             and llm_model
             and not llm_model.model_entity.abilities.__contains__('vision')
         ):
@@ -162,14 +186,15 @@ class PreProcessor(stage.PipelineStage):
         content_list: list[provider_message.ContentElement] = []
 
         plain_text = ''
-        quote_msg = query.pipeline_config['trigger'].get('misc', '').get('combine-quote-message')
+        quote_msg = query.pipeline_config['trigger'].get('misc', {}).get('combine-quote-message', False)
 
         for me in query.message_chain:
             if isinstance(me, platform_message.Plain):
                 content_list.append(provider_message.ContentElement.from_text(me.text))
                 plain_text += me.text
             elif isinstance(me, platform_message.Image):
-                if selected_runner != 'local-agent' or (
+                # Allow images for non-local-agent runners or if local-agent has vision
+                if not is_local_agent or (
                     llm_model and llm_model.model_entity.abilities.__contains__('vision')
                 ):
                     if me.base64 is not None:
@@ -190,7 +215,7 @@ class PreProcessor(stage.PipelineStage):
                     if isinstance(msg, platform_message.Plain):
                         content_list.append(provider_message.ContentElement.from_text(msg.text))
                     elif isinstance(msg, platform_message.Image):
-                        if selected_runner != 'local-agent' or (
+                        if not is_local_agent or (
                             llm_model and llm_model.model_entity.abilities.__contains__('vision')
                         ):
                             if msg.base64 is not None:
@@ -214,9 +239,10 @@ class PreProcessor(stage.PipelineStage):
 
         # Extract knowledge base UUIDs into query variables so plugins can modify them
         # during PromptPreProcessing before the runner performs retrieval.
-        kb_uuids = query.pipeline_config['ai']['local-agent'].get('knowledge-bases', [])
+        # Only for local-agent runner
+        kb_uuids = runner_config.get('knowledge-bases', []) if is_local_agent else []
         if not kb_uuids:
-            old_kb_uuid = query.pipeline_config['ai']['local-agent'].get('knowledge-base', '')
+            old_kb_uuid = runner_config.get('knowledge-base', '') if is_local_agent else ''
             if old_kb_uuid and old_kb_uuid != '__none__':
                 kb_uuids = [old_kb_uuid]
         query.variables['_knowledge_base_uuids'] = list(kb_uuids)

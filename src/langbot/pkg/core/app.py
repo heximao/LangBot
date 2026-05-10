@@ -4,6 +4,7 @@ import logging
 import asyncio
 import traceback
 import os
+from typing import TYPE_CHECKING
 
 from ..platform import botmgr as im_mgr
 from ..platform.webhook_pusher import WebhookPusher
@@ -43,6 +44,9 @@ from ..rag.service import RAGRuntimeService
 from ..vector import mgr as vectordb_mgr
 from ..telemetry import telemetry as telemetry_module
 from ..survey import manager as survey_module
+
+if TYPE_CHECKING:
+    from ..agent.runner import AgentRunnerRegistry, AgentRunOrchestrator
 
 
 class Application:
@@ -157,6 +161,11 @@ class Application:
     monitoring_service: monitoring_service.MonitoringService = None
 
     maintenance_service: maintenance_service.MaintenanceService = None
+
+    # Agent runner subsystem
+    agent_runner_registry: AgentRunnerRegistry = None
+
+    agent_run_orchestrator: AgentRunOrchestrator = None
 
     def __init__(self):
         pass
