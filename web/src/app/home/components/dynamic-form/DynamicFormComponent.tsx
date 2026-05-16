@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Copy, Check, Globe, QrCode } from 'lucide-react';
 import { copyToClipboard } from '@/app/utils/clipboard';
 import { systemInfo } from '@/app/infra/http';
+import { parseDynamicFormItemType } from './DynamicFormItemConfig';
 
 /**
  * Resolve the value referenced by a `show_if.field` string.
@@ -196,14 +197,8 @@ function WebhookUrlField({
 /**
  * Normalize plugin manifest type names to frontend-compatible types
  */
-function normalizeItemType(type: string): string {
-  const typeMap: Record<string, string> = {
-    'select-llm-model': DynamicFormItemType.LLM_MODEL_SELECTOR,
-    'select-knowledge-bases': DynamicFormItemType.KNOWLEDGE_BASE_MULTI_SELECTOR,
-    number: DynamicFormItemType.FLOAT,
-    json: DynamicFormItemType.TEXT,
-  };
-  return typeMap[type] || type;
+function normalizeItemType(type: string): DynamicFormItemType {
+  return parseDynamicFormItemType(type);
 }
 
 export default function DynamicFormComponent({
