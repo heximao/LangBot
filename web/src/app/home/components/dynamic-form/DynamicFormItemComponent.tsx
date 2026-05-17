@@ -254,6 +254,7 @@ export default function DynamicFormItemComponent({
           type="number"
           className="max-w-xs"
           {...field}
+          value={field.value ?? ''}
           onChange={(e) => field.onChange(Number(e.target.value))}
         />
       );
@@ -262,7 +263,7 @@ export default function DynamicFormItemComponent({
       if (config.options && config.options.length > 0) {
         return (
           <div className="flex items-center gap-1.5 max-w-md">
-            <Input className="flex-1" {...field} />
+            <Input className="flex-1" {...field} value={field.value ?? ''} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -293,22 +294,33 @@ export default function DynamicFormItemComponent({
           </div>
         );
       }
-      return <Input className="max-w-md" {...field} />;
+      return (
+        <Input className="max-w-md" {...field} value={field.value ?? ''} />
+      );
 
     case DynamicFormItemType.TEXT:
-      return <Textarea {...field} className="min-h-[120px] max-w-2xl" />;
+      return (
+        <Textarea
+          {...field}
+          value={field.value ?? ''}
+          className="min-h-[120px] max-w-2xl"
+        />
+      );
 
     case DynamicFormItemType.JSON:
       return (
         <Textarea
           {...field}
+          value={field.value ?? ''}
           className="min-h-[200px] font-mono text-sm"
           placeholder='{"key": "value"}'
         />
       );
 
     case DynamicFormItemType.BOOLEAN:
-      return <Switch checked={field.value} onCheckedChange={field.onChange} />;
+      return (
+        <Switch checked={!!field.value} onCheckedChange={field.onChange} />
+      );
 
     case DynamicFormItemType.STRING_ARRAY:
       return (
@@ -1421,7 +1433,7 @@ export default function DynamicFormItemComponent({
                 {/* 内容输入 */}
                 <Textarea
                   className="w-[300px]"
-                  value={item.content}
+                  value={item.content ?? ''}
                   onChange={(e) => {
                     const newValue = [...(field.value ?? promptItems)];
                     newValue[index] = {

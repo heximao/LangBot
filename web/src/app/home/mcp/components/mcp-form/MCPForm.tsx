@@ -283,14 +283,10 @@ const MCPForm = forwardRef<MCPFormHandle, MCPFormProps>(function MCPForm(
   }, [mcpTesting, onTestingChange]);
 
   // Expose test action and testing state to parent
-  useImperativeHandle(
-    ref,
-    () => ({
-      testMcp: () => testMcp(),
-      isTesting: mcpTesting,
-    }),
-    [mcpTesting],
-  );
+  useImperativeHandle(ref, () => ({
+    testMcp: () => testMcp(),
+    isTesting: mcpTesting,
+  }));
 
   // Load server data
   useEffect(() => {
